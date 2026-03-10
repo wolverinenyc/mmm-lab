@@ -1,0 +1,44 @@
+# Virtual environments
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+
+# Data (large, regenerable, potentially sensitive)
+*.csv
+*.parquet
+*.feather
+*.pkl
+*.db
+
+# Model outputs (large)
+*.h5
+*.rds
+*.stanfit
+*.pt
+*.ckpt
+
+# Generated outputs (regenerable)
+*.png
+*.jpg
+*.pdf
+*.html
+output/
+outputs/
+plots/
+figures/
+results/
+
+# Environments
+environments/meridian/.venv/
+environments/pymc/.venv/
