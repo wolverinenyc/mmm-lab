@@ -13,9 +13,9 @@ Add marketing spend and effects to baseline geo data.
 #    - TV: K=$5,000 means at $5k/week/geo, you're 50% saturated
 #    - Paid Search: K=$2,000 means it saturates faster
 
-# 3. **Effect Calculation**:
-# ```
-#    Effect = Saturation × Effectiveness × Adstocked_Spend
+# 3. Effect Calculation:
+#    Effect = beta × pop_weight × geo_effectiveness × hill(adstock)
+#    (standard formulation: beta is the national bookings ceiling)
 
 import numpy as np
 import pandas as pd
@@ -129,24 +129,25 @@ def add_marketing_effects(
         'tv': {
             'weekly_budget': 100_000,
             'budget_variation': 0.2,
-            'geo_budget_variation': 0.15, # geo-specific budget variation
-            'adstock_rate': 0.5,  # 50% carries over (~7 weeks to <1%)
-            'saturation_K': 5_000,  # $5k spend/geo → 50% saturated
-            'saturation_S': 1.0,  # Standard diminishing returns
-            'baseline_effectiveness': 1.0,  # Incremental bookings per $1 at zero saturation
-            'geo_effectivness_cv': 0.2 # coefficient of variation across geos
+            'geo_budget_variation': 0.15,
+            'adstock_rate': 0.5,
+            'saturation_K': 5_000,
+            'saturation_S': 1.0,
+            'beta': 201_000,   # national bookings ceiling: beta * avg_hill / national_spend ≈ ROAS 1.08
+            'geo_effectivness_cv': 0.2
         },
         'paid_search': {
             'weekly_budget': 80_000,
             'budget_variation': 0.2,
-            'geo_budget_variation': 0.15, # geo-specific budget variation
-            'adstock_rate': 0.3,  # 30% carries over (~4 weeks to <1%)
-            'saturation_K': 2_000,  # $2k spend/geo → 50% saturated (saturates faster)
-            'saturation_S': 1.5,  # Steeper S-curve
-            'baseline_effectiveness': 2.5,  # Higher immediate effectiveness
-            'geo_effectivness_cv': 0.25 # coefficient of variation across geos
+            'geo_budget_variation': 0.15,
+            'adstock_rate': 0.3,
+            'saturation_K': 2_000,
+            'saturation_S': 1.5,
+            'beta': 293_000,   # national bookings ceiling: beta * avg_hill / national_spend ≈ ROAS 2.28
+            'geo_effectivness_cv': 0.25
         }
     }
+
     
     # Generate spend and effects for each channel
     geo_effectiveness = {}
@@ -201,16 +202,14 @@ def add_marketing_effects(
                 S=params['saturation_S']
             )
             
-            # Calculate incremental effect
-            # Effect = saturation * effectiveness * adstocked_spend
-            # This ensures effect scales with both spend level AND diminishing returns
+            # Calculate incremental effect: beta × pop_weight × geo_effectiveness × hill(adstock)
             geo_effectiveness_mult = geo_effectiveness[channel][geo_idx]
 
             geo_effect = (
-                geo_saturated * 
-                params['baseline_effectiveness'] * 
-                geo_effectiveness_mult * 
-                geo_adstocked
+                params['beta'] *            # bookings ceiling (national, scaled by population)
+                pop_weights[geo_idx] *      # distribute by geo population
+                geo_effectiveness_mult *    # geo-specific multiplier
+                geo_saturated               # hill(adstock) ∈ [0, 1]
             )
             
             # Store results
