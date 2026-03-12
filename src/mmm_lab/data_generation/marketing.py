@@ -92,8 +92,10 @@ def calculate_adstock_multiplier(decay_rate, max_lags=52):
 
 def add_marketing_effects(
     baseline_df,
-    channels=['tv', 'paid_search']
+    channels=['tv', 'paid_search'],
+    baseline_scale=10,          # scale baseline to achieve realistic media share (~30%)
 ):
+
     """
     Add marketing spend and incremental bookings to baseline geo data.
     
@@ -222,6 +224,7 @@ def add_marketing_effects(
     
     # Calculate total bookings
     effect_cols = [f'effect_{channel}' for channel in channels]
+    df['baseline_bookings'] = df['baseline_bookings'] * baseline_scale
     df['total_bookings'] = df['baseline_bookings'] + df[effect_cols].sum(axis=1)
     
     # Calculate and display ground truth metrics
