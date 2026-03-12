@@ -129,7 +129,7 @@ def add_marketing_effects(
         'tv': {
             'weekly_budget': 100_000,
             'budget_variation': 0.2,
-            'geo_budget_variation': 0.15,
+            'geo_budget_variation': 0.60,
             'adstock_rate': 0.5,
             'saturation_K': 5_000,
             'saturation_S': 1.0,
@@ -139,7 +139,7 @@ def add_marketing_effects(
         'paid_search': {
             'weekly_budget': 80_000,
             'budget_variation': 0.2,
-            'geo_budget_variation': 0.15,
+            'geo_budget_variation': 0.60,
             'adstock_rate': 0.3,
             'saturation_K': 2_000,
             'saturation_S': 1.5,
