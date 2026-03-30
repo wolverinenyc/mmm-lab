@@ -34,7 +34,7 @@ def generate_baseline_geo_data(n_geos, n_weeks, start_date='2023-01-01', config=
         'national_seasonal_amplitude': 0.30,
         'regional_seasonal_amplitude': 0.20,
         'size_seasonal_amplitude': 0.15,
-        'ar_phi': 0.7,
+        'ar_phi': 0.0, # No AR(1) autocorrelation by default for simplicity; can set to 0.5 for moderate persistence
         'ar_sigma': 0.08
     }
     if config:
@@ -160,17 +160,23 @@ def generate_baseline_geo_data(n_geos, n_weeks, start_date='2023-01-01', config=
         baseline_bookings = base * seasonal * trend * ar_noise
 
         # demand proxies for MMM controls 
-        demand_perfect = baseline_bookings.copy()  # for potential future use
-        noise_good = np.random.normal(1.0, 0.08, n_weeks)
-        demand_good = baseline_bookings * noise_good # mild noise
-        demand_good = np.roll(demand_good, 1)  # lag by 1 week
-        demand_good[0] = demand_good[1] # fix first week after roll
+        demand_perfect = baseline_bookings.copy()
 
-        noise_poor = np.random.normal(1.0, 0.30, n_weeks)
-        wrong_lag = np.random.randint(0, 4)  # lag by 0-3 weeks
-        demand_poor_lagged = np.roll(baseline_bookings, wrong_lag) 
-        demand_poor_lagged[:wrong_lag] = demand_poor_lagged[wrong_lag]  # fix start after roll
-        demand_poor = np.log1p(np.maximum(0, demand_poor_lagged * noise_poor)) * 50  # heavy noise + log transform
+        # demand_very_good: mild noise only, r≈0.97
+        noise_very_good = np.random.normal(1.0, 0.05, n_weeks)
+        demand_very_good = baseline_bookings * noise_very_good
+
+
+        # demand_good: moderate noise + 1-week lag, r≈0.75
+        noise_moderate = np.random.normal(1.0, 0.15, n_weeks)
+        demand_good = np.roll(baseline_bookings * noise_moderate, 1)
+        demand_good[0] = demand_good[1]
+
+        # demand_poor: mostly noise, r≈0.10-0.20 (temporal)
+        mix_weight = 0.2
+        noise_std = np.std(baseline_bookings) * 2
+        demand_poor = np.random.normal(0, noise_std, n_weeks) + baseline_bookings * mix_weight
+        demand_poor = np.maximum(demand_poor, 0)
 
 
         # Market conditions (slow-moving exogenous control)
@@ -192,9 +198,11 @@ def generate_baseline_geo_data(n_geos, n_weeks, start_date='2023-01-01', config=
                 'baseline_bookings': int(max(50, baseline_bookings[week_idx])),
                 'market_conditions': market_conditions[week_idx],
                 'demand_perfect': int(demand_perfect[week_idx]),
+                'demand_very_good': demand_very_good[week_idx],
                 'demand_good': demand_good[week_idx],
                 'demand_poor': demand_poor[week_idx]
             })
+
     
     return pd.DataFrame(data)
 
@@ -215,17 +223,19 @@ def print_summary(df):
     print("\n" + "="*70)
     print("DEMAND PROXY QUALITY (correlation with baseline_bookings)")
     print("="*70)
-    for proxy in ['demand_perfect', 'demand_good', 'demand_poor']:
+    for proxy in ['demand_perfect', 'demand_very_good', 'demand_good', 'demand_poor']:
         corr = df.groupby('geo').apply(
             lambda x: x['baseline_bookings'].corr(x[proxy])
         ).mean()
         print(f"{proxy:20s}: {corr:.3f}")
     
     print("\nExpected ranges:")
-    print("  demand_perfect  : 1.000 (identical to baseline)")
-    print("  demand_good     : 0.90-0.95 (small noise, 1-week lag)")
-    print("  demand_poor     : 0.40-0.55 (high noise, wrong lag, log transform)")
+    print("  demand_perfect   : 1.000 (identical to baseline)")
+    print("  demand_very_good : 0.95-0.99 (small noise, 1-week lag)")
+    print("  demand_good      : 0.70-0.80 (high noise, wrong lag, log transform)")
+    print("  demand_poor      : 0.10-0.25 (mostly independent noise)")
     print("="*70)
+
 
 
 
